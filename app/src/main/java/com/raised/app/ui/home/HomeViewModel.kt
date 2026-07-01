@@ -67,21 +67,14 @@ class HomeViewModel @Inject constructor(
      * still renders a sensible summary.
      */
     private fun buildState(presets: List<Preset>): HomeUiState {
-        val hiitConfig = currentConfig(presets, WorkoutType.HIIT) ?: WorkoutConfig.hiitDefault()
-        val raisedConfig = currentConfig(presets, WorkoutType.RAISED) ?: WorkoutConfig.raisedDefault()
+        val hiitConfig = PresetRepository.currentConfig(presets, WorkoutType.HIIT) ?: WorkoutConfig.hiitDefault()
+        val raisedConfig = PresetRepository.currentConfig(presets, WorkoutType.RAISED) ?: WorkoutConfig.raisedDefault()
         return HomeUiState(
             loading = false,
             hiit = summary("HIIT", hiitConfig),
             raised = summary("Raised", raisedConfig),
             presets = presets,
         )
-    }
-
-    private fun currentConfig(presets: List<Preset>, type: WorkoutType): WorkoutConfig? {
-        val oftype = presets.filter { it.config.type == type }
-        // Prefer the seeded default; otherwise the latest saved preset of the type.
-        return oftype.firstOrNull { it.isDefault }?.config
-            ?: oftype.maxByOrNull { it.id }?.config
     }
 
     private fun summary(name: String, config: WorkoutConfig): WorkoutSummary {

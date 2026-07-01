@@ -1,6 +1,7 @@
 package com.raised.app.data
 
 import com.raised.core.WorkoutConfig
+import com.raised.core.WorkoutType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -61,4 +62,19 @@ open class PresetRepository @Inject constructor(
         config = PresetMapper.toConfig(this),
         isDefault = preset.isDefault,
     )
+
+    companion object {
+        /**
+         * The "current config for a type" rule shared by Home, Config and Session
+         * (D8). The seeded default (`isDefault = true`) wins; otherwise the
+         * most-recently-inserted preset of that type. Returns `null` when nothing
+         * of that type is stored, letting the caller fall back to the spec
+         * default (`WorkoutConfig.hiitDefault()` / `raisedDefault()`).
+         */
+        fun currentConfig(presets: List<Preset>, type: WorkoutType): WorkoutConfig? {
+            val oftype = presets.filter { it.config.type == type }
+            return oftype.firstOrNull { it.isDefault }?.config
+                ?: oftype.maxByOrNull { it.id }?.config
+        }
+    }
 }
