@@ -60,11 +60,21 @@ android {
         compose = true
     }
 
+    // Hand the Room KSP compiler a schema export dir (decision D5 — ship a
+    // migration for later schema changes). The committed v1 JSON under
+    // app/schemas/ is the baseline future migrations diff against.
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
     testOptions {
         // returnDefaultValues lets calls to Android framework stubs (Log, etc.)
         // return Java defaults instead of throwing in host-JVM unit tests.
         unitTests {
             isReturnDefaultValues = true
+            // Robolectric needs the merged manifest + resources on the host JVM
+            // to stand up the Room/SQLite-backed DAO tests.
+            isIncludeAndroidResources = true
             all { test ->
                 test.testLogging {
                     events("passed", "skipped", "failed")
@@ -98,12 +108,27 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // Room persistence (D8). v1 schema only — migrations arrive with later
+    // schema changes (D5). The generated DAO implementations come from the KSP
+    // room-compiler.
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     // The design language (colour, typography, shapes) lives in :shared:ui-kit
     // so every screen consumes the same source of truth.
     implementation(project(":shared:ui-kit"))
+    // The persistence layer maps entities to/from :shared:core-workout's
+    // WorkoutConfig so the UI/engine consume domain types, not entities.
+    implementation(project(":shared:core-workout"))
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Robolectric in-memory Room tests on the host JVM.
+    testImplementation(libs.room.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
