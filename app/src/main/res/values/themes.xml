@@ -1,0 +1,6 @@
+<resources>
+    <!-- Launch/splash theme only. Compose (RaisedTheme) drives the real colours,
+         typography, and shapes; this XML theme just needs to be no-action-bar so
+         there is no system ActionBar behind the Compose surface. -->
+    <style name="Theme.Raised" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

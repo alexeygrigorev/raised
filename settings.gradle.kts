@@ -27,6 +27,6 @@ rootProject.name = "raised"
 // Issue #2 uncomments :shared:core-workout (pure-JVM domain: plan builders
 // + timer engine, D3).
 
-// include(":app")
-// include(":shared:ui-kit")
+include(":app")
+include(":shared:ui-kit")
 // include(":shared:core-workout")
