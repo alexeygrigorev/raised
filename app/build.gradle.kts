@@ -115,6 +115,10 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // Coroutines (StateFlow/combine in ViewModels). Declared explicitly rather
+    // than relied on transitively from Room/lifecycle.
+    implementation(libs.kotlinx.coroutines.core)
+
     // The design language (colour, typography, shapes) lives in :shared:ui-kit
     // so every screen consumes the same source of truth.
     implementation(project(":shared:ui-kit"))
