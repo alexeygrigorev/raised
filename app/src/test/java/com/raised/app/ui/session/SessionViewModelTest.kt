@@ -55,10 +55,11 @@ class SessionViewModelTest {
     private val latestState = kotlinx.coroutines.flow.MutableStateFlow<SessionUiState?>(null)
 
     /**
-     * A tiny plan whose steps are easy to reason about. The HIIT builder always
-     * emits GET_READY then WARMUP (even at 0s), so the resulting steps are:
-     *   GET_READY(10), WARMUP(0), EXERCISE(45 "Push-ups"), BREAK(15),
-     *   EXERCISE(45 "Squats"), CHALLENGE(0), COOLDOWN(5)
+     * A tiny plan whose steps are easy to reason about. With warmup/challenge at
+     * 0s the builder collapses those blocks (issue #11), so the resulting steps
+     * are:
+     *   GET_READY(10), EXERCISE(45 "Push-ups"), BREAK(15),
+     *   EXERCISE(45 "Squats"), COOLDOWN(5)
      * total = 120s.
      */
     private fun tinyConfig(): WorkoutConfig = WorkoutConfig(
@@ -128,9 +129,8 @@ class SessionViewModelTest {
     fun `skipForward advances to the next step`() = runTest(mainDispatcher) {
         val vm = buildVm(presets = listOf(Preset(1, "p", tinyConfig(), isDefault = true)))
         loaded()
-        // GET_READY -> WARMUP -> EXERCISE (Push-ups). WARMUP is present even at 0s.
-        vm.skipForward()
-        assertEquals(StepType.WARMUP, latestState.value!!.step?.phase)
+        // GET_READY -> EXERCISE (Push-ups). Warmup is collapsed to nothing
+        // because warmupSecs = 0 (issue #11).
         vm.skipForward()
         val state = latestState.value!!
         assertEquals(StepType.EXERCISE, state.step?.phase)
@@ -142,8 +142,7 @@ class SessionViewModelTest {
     fun `skipBack from later step returns to previous step at full duration`() = runTest(mainDispatcher) {
         val vm = buildVm(presets = listOf(Preset(1, "p", tinyConfig(), isDefault = true)))
         loaded()
-        // GET_READY -> WARMUP -> EXERCISE (Push-ups) -> BREAK
-        vm.skipForward()
+        // GET_READY -> EXERCISE (Push-ups) -> BREAK
         vm.skipForward()
         vm.skipForward()
         assertEquals(StepType.BREAK, latestState.value!!.step?.phase)

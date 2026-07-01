@@ -11,13 +11,17 @@ package com.raised.core
  *
  * Structure, in order:
  *  1. `GET_READY(getReadySecs)`
- *  2. `WARMUP(warmupSecs)`
+ *  2. `WARMUP(warmupSecs)` — only when `warmupSecs > 0`.
  *  3. For each round `1..rounds`: every exercise as
  *     `EXERCISE(exerciseSecs, index, label)`, with `BREAK(breakSecs)` between
  *     them (NOT after the last exercise of the round). After the round, if it is
  *     not the last round, `LONG_BREAK(longBreakSecs)`.
- *  4. `CHALLENGE(challengeSecs)` (cardio).
- *  5. `COOLDOWN(cooldownSecs)`.
+ *  4. `CHALLENGE(challengeSecs)` (cardio) — only when `challengeSecs > 0`.
+ *  5. `COOLDOWN(cooldownSecs)` — only when `cooldownSecs > 0`.
+ *
+ * A configurable block with a `0` duration is omitted entirely (it would flash
+ * a 0s step in the session UI); the total duration is unchanged since a 0s step
+ * contributes nothing.
  *
  * @throws IllegalArgumentException if [config] has no exercises or `rounds < 1`.
  */
@@ -28,7 +32,9 @@ fun buildHiitPlan(config: WorkoutConfig): WorkoutPlan {
     val steps = mutableListOf<Step>()
 
     steps += Step(StepType.GET_READY, config.getReadySecs)
-    steps += Step(StepType.WARMUP, config.warmupSecs)
+    if (config.warmupSecs > 0) {
+        steps += Step(StepType.WARMUP, config.warmupSecs)
+    }
 
     val lastIndex = config.exercises.lastIndex
     for (round in 1..config.rounds) {
@@ -48,8 +54,12 @@ fun buildHiitPlan(config: WorkoutConfig): WorkoutPlan {
         }
     }
 
-    steps += Step(StepType.CHALLENGE, config.challengeSecs)
-    steps += Step(StepType.COOLDOWN, config.cooldownSecs)
+    if (config.challengeSecs > 0) {
+        steps += Step(StepType.CHALLENGE, config.challengeSecs)
+    }
+    if (config.cooldownSecs > 0) {
+        steps += Step(StepType.COOLDOWN, config.cooldownSecs)
+    }
 
     return WorkoutPlan(steps)
 }
@@ -59,13 +69,17 @@ fun buildHiitPlan(config: WorkoutConfig): WorkoutPlan {
  *
  * Structure, in order:
  *  1. `GET_READY(getReadySecs)`
- *  2. `WARMUP(warmupSecs)`
+ *  2. `WARMUP(warmupSecs)` — only when `warmupSecs > 0`.
  *  3. For each exercise index `e`: every set as
  *     `EXERCISE(exerciseSecs, index, label)`, with `BREAK(breakSecs)` between
  *     sets (NOT after the last set). After the exercise, if it is not the last
  *     exercise, `LONG_BREAK(longBreakSecs)`.
- *  4. `CHALLENGE(challengeSecs)` (core).
- *  5. `COOLDOWN(cooldownSecs)`.
+ *  4. `CHALLENGE(challengeSecs)` (core) — only when `challengeSecs > 0`.
+ *  5. `COOLDOWN(cooldownSecs)` — only when `cooldownSecs > 0`.
+ *
+ * A configurable block with a `0` duration is omitted entirely (it would flash
+ * a 0s step in the session UI); the total duration is unchanged since a 0s step
+ * contributes nothing.
  *
  * @throws IllegalArgumentException if [config] has no exercises or `sets < 1`.
  */
@@ -76,7 +90,9 @@ fun buildRaisedPlan(config: WorkoutConfig): WorkoutPlan {
     val steps = mutableListOf<Step>()
 
     steps += Step(StepType.GET_READY, config.getReadySecs)
-    steps += Step(StepType.WARMUP, config.warmupSecs)
+    if (config.warmupSecs > 0) {
+        steps += Step(StepType.WARMUP, config.warmupSecs)
+    }
 
     val lastIndex = config.exercises.lastIndex
     for (e in config.exercises.indices) {
@@ -96,8 +112,12 @@ fun buildRaisedPlan(config: WorkoutConfig): WorkoutPlan {
         }
     }
 
-    steps += Step(StepType.CHALLENGE, config.challengeSecs)
-    steps += Step(StepType.COOLDOWN, config.cooldownSecs)
+    if (config.challengeSecs > 0) {
+        steps += Step(StepType.CHALLENGE, config.challengeSecs)
+    }
+    if (config.cooldownSecs > 0) {
+        steps += Step(StepType.COOLDOWN, config.cooldownSecs)
+    }
 
     return WorkoutPlan(steps)
 }
