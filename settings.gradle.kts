@@ -29,4 +29,4 @@ rootProject.name = "raised"
 
 include(":app")
 include(":shared:ui-kit")
-// include(":shared:core-workout")
+include(":shared:core-workout")
