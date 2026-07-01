@@ -171,7 +171,7 @@ class ConfigViewModel @Inject constructor(
             repository.observeAll().collect { presets ->
                 if (!seededFromRepo && presets.isNotEmpty()) {
                     seededFromRepo = true
-                    currentConfig(presets)?.let { workingConfig.value = it }
+                    PresetRepository.currentConfig(presets, type)?.let { workingConfig.value = it }
                 }
             }
         }
@@ -179,12 +179,6 @@ class ConfigViewModel @Inject constructor(
 
     @Volatile
     private var seededFromRepo = false
-
-    private fun currentConfig(presets: List<Preset>): WorkoutConfig? {
-        val oftype = presets.filter { it.config.type == type }
-        return oftype.firstOrNull { it.isDefault }?.config
-            ?: oftype.maxByOrNull { it.id }?.config
-    }
 
     private fun project(
         config: WorkoutConfig,
