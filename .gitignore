@@ -1,0 +1,46 @@
+# Android / Gradle / IDE ignores — mirrors pocketshell.
+
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+/app/build
+/app/debug
+/app/release
+
+# Shared module build outputs
+/shared/*/build
+
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.ear
+
+.kotlin/
+
+# Gradle
+.gradle/
+build/
+*/build/
+
+# IDE
+.idea/
+.vscode/
+
+# Per-issue worktrees + pickup patches (process isolation)
+/.worktrees/
+/.pickup/
+
+# NOTE: debug.keystore IS committed on purpose (single shared signing identity
+# across machines/CI), exactly like pocketshell — do not gitignore it.
