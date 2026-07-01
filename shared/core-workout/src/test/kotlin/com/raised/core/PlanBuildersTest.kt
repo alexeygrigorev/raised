@@ -119,6 +119,57 @@ class PlanBuildersTest {
         )
     }
 
+    @Test fun `hiit omits zero-duration warmup, challenge and cooldown`() {
+        val cfg = WorkoutConfig.hiitDefault().copy(
+            warmupSecs = 0,
+            challengeSecs = 0,
+            cooldownSecs = 0,
+        )
+        val plan = buildHiitPlan(cfg)
+
+        // None of the collapsed blocks appear.
+        assertEquals(0, plan.steps.count { it.type == StepType.WARMUP })
+        assertEquals(0, plan.steps.count { it.type == StepType.CHALLENGE })
+        assertEquals(0, plan.steps.count { it.type == StepType.COOLDOWN })
+        // GET_READY and the exercise sequence are untouched.
+        assertEquals(1, plan.steps.count { it.type == StepType.GET_READY })
+        assertEquals(24, plan.steps.count { it.type == StepType.EXERCISE })
+        // Plan now starts at GET_READY and ends on the final exercise.
+        assertEquals(StepType.GET_READY, plan.steps.first().type)
+        assertEquals(StepType.EXERCISE, plan.steps.last().type)
+    }
+
+    @Test fun `hiit collapsing a zero-duration block is total-neutral`() {
+        // A 0s block contributes 0 either way, so omitting it must not change the
+        // total vs. a plan that still carries the 0s step (modelled by the
+        // expected-sequence helper, which mirrors the old unconditional emit).
+        val zeroed = WorkoutConfig.hiitDefault().copy(warmupSecs = 0, challengeSecs = 0, cooldownSecs = 0)
+        val collapsed = buildHiitPlan(zeroed).totalDurationSec
+        // Default total minus the three zeroed block values (60 + 60 + 120).
+        assertEquals(1765 - 60 - 60 - 120, collapsed)
+        // And the kept sequence (get-ready + exercises/rounds + long breaks) sums
+        // to exactly the same number — the dropped steps added nothing.
+        assertEquals(
+            WorkoutConfig.hiitDefault().let {
+                it.getReadySecs + it.rounds * (8 * it.exerciseSecs + 7 * it.breakSecs) +
+                    (it.rounds - 1) * it.longBreakSecs
+            },
+            collapsed,
+        )
+    }
+
+    @Test fun `hiit collapses only the blocks set to zero, keeping the rest`() {
+        // Only challenge zeroed; warmup and cooldown remain in place and ordered.
+        val cfg = WorkoutConfig.hiitDefault().copy(challengeSecs = 0)
+        val plan = buildHiitPlan(cfg)
+        assertEquals(1, plan.steps.count { it.type == StepType.WARMUP })
+        assertEquals(0, plan.steps.count { it.type == StepType.CHALLENGE })
+        assertEquals(1, plan.steps.count { it.type == StepType.COOLDOWN })
+        // Order of the kept tail blocks: last exercise directly into COOLDOWN.
+        val cooldownAt = plan.steps.indexOfLast { it.type == StepType.COOLDOWN }
+        assertEquals(StepType.EXERCISE, plan.steps[cooldownAt - 1].type)
+    }
+
     // ---- Raised ----
 
     @Test fun `raised default has 39 steps totalling 1900 seconds`() {
@@ -168,6 +219,49 @@ class PlanBuildersTest {
         assertEquals(expected, indices)
     }
 
+    @Test fun `raised omits zero-duration warmup, challenge and cooldown`() {
+        val cfg = WorkoutConfig.raisedDefault().copy(
+            warmupSecs = 0,
+            challengeSecs = 0,
+            cooldownSecs = 0,
+        )
+        val plan = buildRaisedPlan(cfg)
+
+        assertEquals(0, plan.steps.count { it.type == StepType.WARMUP })
+        assertEquals(0, plan.steps.count { it.type == StepType.CHALLENGE })
+        assertEquals(0, plan.steps.count { it.type == StepType.COOLDOWN })
+        assertEquals(1, plan.steps.count { it.type == StepType.GET_READY })
+        assertEquals(18, plan.steps.count { it.type == StepType.EXERCISE })
+        assertEquals(StepType.GET_READY, plan.steps.first().type)
+        assertEquals(StepType.EXERCISE, plan.steps.last().type)
+    }
+
+    @Test fun `raised collapsing a zero-duration block is total-neutral`() {
+        val zeroed = WorkoutConfig.raisedDefault().copy(warmupSecs = 0, challengeSecs = 0, cooldownSecs = 0)
+        val collapsed = buildRaisedPlan(zeroed).totalDurationSec
+        // Default total minus the three zeroed block values (60 + 60 + 120).
+        assertEquals(1900 - 60 - 60 - 120, collapsed)
+        // The kept sequence (get-ready + sets per exercise + long breaks) sums to
+        // the same number — the dropped 0s steps added nothing.
+        assertEquals(
+            WorkoutConfig.raisedDefault().let {
+                it.getReadySecs + 6 * (3 * it.exerciseSecs + 2 * it.breakSecs) +
+                    (6 - 1) * it.longBreakSecs
+            },
+            collapsed,
+        )
+    }
+
+    @Test fun `raised collapses only the blocks set to zero, keeping the rest`() {
+        val cfg = WorkoutConfig.raisedDefault().copy(cooldownSecs = 0)
+        val plan = buildRaisedPlan(cfg)
+        assertEquals(1, plan.steps.count { it.type == StepType.WARMUP })
+        assertEquals(1, plan.steps.count { it.type == StepType.CHALLENGE })
+        assertEquals(0, plan.steps.count { it.type == StepType.COOLDOWN })
+        // With cooldown gone the plan ends on CHALLENGE.
+        assertEquals(StepType.CHALLENGE, plan.steps.last().type)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `raised rejects zero exercises`() {
         buildRaisedPlan(WorkoutConfig.raisedDefault().copy(exercises = emptyList()))
@@ -196,7 +290,7 @@ class PlanBuildersTest {
     private fun expectedHiitSteps(cfg: WorkoutConfig): List<Step> {
         val out = mutableListOf<Step>()
         out += Step(StepType.GET_READY, cfg.getReadySecs)
-        out += Step(StepType.WARMUP, cfg.warmupSecs)
+        if (cfg.warmupSecs > 0) out += Step(StepType.WARMUP, cfg.warmupSecs)
         val last = cfg.exercises.lastIndex
         for (round in 1..cfg.rounds) {
             for (i in cfg.exercises.indices) {
@@ -205,15 +299,15 @@ class PlanBuildersTest {
             }
             if (round < cfg.rounds) out += Step(StepType.LONG_BREAK, cfg.longBreakSecs)
         }
-        out += Step(StepType.CHALLENGE, cfg.challengeSecs)
-        out += Step(StepType.COOLDOWN, cfg.cooldownSecs)
+        if (cfg.challengeSecs > 0) out += Step(StepType.CHALLENGE, cfg.challengeSecs)
+        if (cfg.cooldownSecs > 0) out += Step(StepType.COOLDOWN, cfg.cooldownSecs)
         return out
     }
 
     private fun expectedRaisedSteps(cfg: WorkoutConfig): List<Step> {
         val out = mutableListOf<Step>()
         out += Step(StepType.GET_READY, cfg.getReadySecs)
-        out += Step(StepType.WARMUP, cfg.warmupSecs)
+        if (cfg.warmupSecs > 0) out += Step(StepType.WARMUP, cfg.warmupSecs)
         val last = cfg.exercises.lastIndex
         for (e in cfg.exercises.indices) {
             for (set in 1..cfg.sets) {
@@ -222,8 +316,8 @@ class PlanBuildersTest {
             }
             if (e < last) out += Step(StepType.LONG_BREAK, cfg.longBreakSecs)
         }
-        out += Step(StepType.CHALLENGE, cfg.challengeSecs)
-        out += Step(StepType.COOLDOWN, cfg.cooldownSecs)
+        if (cfg.challengeSecs > 0) out += Step(StepType.CHALLENGE, cfg.challengeSecs)
+        if (cfg.cooldownSecs > 0) out += Step(StepType.COOLDOWN, cfg.cooldownSecs)
         return out
     }
 }
