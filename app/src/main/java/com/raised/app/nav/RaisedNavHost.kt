@@ -1,41 +1,67 @@
 package com.raised.app.nav
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.raised.app.ui.config.ConfigScreen
+import com.raised.app.ui.home.HomeScreen
+import com.raised.app.ui.session.SessionPlaceholder
+import com.raised.core.WorkoutType
+
+/** Route constants for the nav graph (issue #4 owns the graph). */
+object Routes {
+    const val HOME = "home"
+
+    /** Config editor for one workout type. `type` ∈ {HIIT, RAISED}. */
+    const val CONFIG = "config/{type}"
+    fun config(type: WorkoutType) = "config/${type.name}"
+
+    /**
+     * Session player for one workout type. Issue #5 fills in the real screen;
+     * for now it renders [SessionPlaceholder]. `type` ∈ {HIIT, RAISED}.
+     */
+    const val SESSION = "session/{type}"
+    fun session(type: WorkoutType) = "session/${type.name}"
+}
 
 /**
- * Top-level app composable. Today this is a single placeholder Home screen so
- * the app boots and the theme renders. Issue #3 wires real navigation:
- * Home → Config → Session → Summary.
+ * Top-level app composable + nav graph. Three routes today:
+ *  - [Routes.HOME] — the two workout cards.
+ *  - [Routes.CONFIG] — editor for the chosen workout's working config.
+ *  - [Routes.SESSION] — placeholder; issue #5 implements the timer.
+ *
+ * Start navigates to `session/{type}` with just the type arg; the Session
+ * rebuilds the plan from the current stored config (D3/D8).
  */
 @Composable
 fun RaisedApp() {
-    Scaffold(modifier = Modifier.fillMaxSize()) { inner ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("Raised", style = MaterialTheme.typography.displaySmall)
-            Text(
-                "Two interval workouts: HIIT and Raised.\n" +
-                    "The session engine and screens land in the next issues.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = Routes.HOME,
+    ) {
+        composable(Routes.HOME) {
+            HomeScreen(
+                onOpenConfig = { type -> navController.navigate(Routes.config(type)) },
+                onStart = { type -> navController.navigate(Routes.session(type)) },
             )
+        }
+        composable(
+            route = Routes.CONFIG,
+            arguments = listOf(navArgument("type") { type = NavType.StringType }),
+        ) {
+            ConfigScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.SESSION,
+            arguments = listOf(navArgument("type") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            // ISSUE #5: replace this with the real Session screen + ViewModel.
+            val type = WorkoutType.valueOf(requireNotNull(backStackEntry.arguments?.getString("type")))
+            SessionPlaceholder(type = type)
         }
     }
 }
